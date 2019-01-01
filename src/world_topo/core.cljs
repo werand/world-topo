@@ -4,26 +4,28 @@
 
 (enable-console-print!)
 
-(def world-promise (js/d3.json "world.json"))
-(def places-promise (js/d3.json "places.json"))
+(defonce world-promise (js/d3.json "world.json"))
+(defonce places-promise (js/d3.json "places.json"))
 
-(def height 1000)
-(def width 960)
+(defonce height 1000)
+(defonce width 960)
 
-(def proj (-> js/d3
-              (.geoOrthographic)
-              (.translate (into-array (/ width 2) (/ height 2)))
-              (.clipAngle 90)
-              (.scale 420)))
+(defonce proj (atom (-> js/d3
+                    (.geoOrthographic)
+                    (.translate #js [(/ width 2) (/ height 2)])
+                    (.clipAngle 90)
+                    (.scale 420))))
 
-(def sky (-> js/d3
+(defonce sky (-> js/d3
              (.geoOrthographic)
-             (.translate (into-array (/ width 2) (/ height 2)))))
+             (.translate #js [(/ width 2) (/ height 2)])))
 
-(def path (-> js/d3
-              (.geoPath)
-              (.projection proj)
-              (.pointRadius 2)))
+(defonce path (atom (-> js/d3
+                    (.geoPath)
+                    (.projection @proj)
+                    (.pointRadius 2))))
+
+(defonce svg (atom 0))
 
 #_(def swoosh (-> js/d3
                 (.line)
@@ -32,7 +34,34 @@
                 (.interpolate "cardinal")
                 (.tension .0)))
 
-(println "This text is printed from src/world-topo/core.cljs. Go ahead and edit it and see reloading in action. yeah")
+(def m0 (atom []))
+(def o0 (atom [0 0 0]))
+
+(defn mousedown []
+  (reset! m0 [js/d3.event.pageX js/d3.event.pageY])
+  (reset! o0 (.rotate @proj))
+  #_(println @o0)
+  (-> js/d3.event
+      (.preventDefault)))
+
+(defn mouseup [])
+
+(declare on-js-reload)
+
+(defn mousemove []
+  (let [m1 [js/d3.event.pageX js/d3.event.pageY]
+        o1 [(+ (first @o0)
+               (/ (- (first m1) (first @m0)) 6))
+            (+ (second @o0)
+               (/ (- (second @m0) (second m1)) 6))]]
+    #_(println m1)
+    (println o1)
+    (.rotate @proj o1)
+    (.rotate sky o1)
+    #_(reset! o0 o1)
+    (on-js-reload)))
+
+(println "This text is printed from src/world-topo/core.cljs. Go ahead and edit it and see reloading in action.")
 
 ;; define your app data so that it doesn't get over-written on reload
 
@@ -51,7 +80,7 @@
       (.append "svg")
       (.attr "height" height)
       (.attr "width" width)
-      #_(.on "mousedown" mousedown)))
+      (.on "mousedown" mousedown)))
 
 (defn remove-svg []
   (-> js/d3
@@ -127,51 +156,65 @@
       (.append "ellipse")
       (.attr "cx" 440)
       (.attr "cy" 450)
-      (.attr "rx" (* 0.9 (.scale proj)))
-      (.attr "ry" (* 0.25 (.scale proj)))
+      (.attr "rx" (* .9 (.scale @proj)))
+      (.attr "ry" (* .25 (.scale @proj)))
       (.attr "class" "noclicks")
       (.style "fill" "url(#drop_shadow)"))
   (-> svg
       (.append "circle")
       (.attr "cx" (/ width 2))
-      (.attr "xy" (/ height 2))
-      (.attr "r" (.scale proj))
+      (.attr "cy" (/ height 2))
+      (.attr "r" (.scale @proj))
       (.attr "class" "noclicks")
       (.style "fill" "url(#ocean_fill)"))
   (-> svg
       (.append "path")
       (.datum (js/topojson.feature world (.. world -objects -land)))
       (.attr "class" "land noclicks")
-      (.attr "d" path))
+      (.attr "d" @path))
   (-> svg
       (.append "circle")
       (.attr "cx" (/ width 2))
-      (.attr "xy" (/ height 2))
-      (.attr "r" (.scale proj))
+      (.attr "cy" (/ height 2))
+      (.attr "r" (.scale @proj))
       (.attr "class" "noclicks")
       (.style "fill" "url(#globe_highlight)"))
   (-> svg
       (.append "circle")
       (.attr "cx" (/ width 2))
-      (.attr "xy" (/ height 2))
-      (.attr "r" (.scale proj))
+      (.attr "cy" (/ height 2))
+      (.attr "r" (.scale @proj))
       (.attr "class" "noclicks")
       (.style "fill" "url(#globe_shading)"))
 ;; Refresh
   (-> svg
       (.selectAll ".land")
-      (.attr "d" path))
+      (.attr "d" @path))
   (-> svg
       (.selectAll ".point")
-      (.attr "d" path))
+      (.attr "d" @path))
   )
 
 (defn ^:export main []
-  (let [svg (append-svg)]
+  (-> js/d3
+      (.select js/window)
+      (.on "mouseup" mouseup)
+      (.on "mousemove" mousemove))
+  (reset! proj (-> js/d3
+                   (.geoOrthographic)
+                   (.translate #js [(/ width 2) (/ height 2)])
+                   (.clipAngle 90)
+                   (.scale 420)))
+  #_(reset! path (-> js/d3
+                   (.geoPath)
+                   (.projection @proj)
+                   (.pointRadius 2)))
+  (let [lsvg (append-svg)]
     (.then (js/Promise.all #js [world-promise places-promise])
-           #(render svg (first %) (second %)))))
+           #_(reset! svg lsvg)
+           #(render lsvg (first %) (second %)))))
 
 (defn on-js-reload []
-  (println "on-js-reload")
+  (println "on-js-reload called")
   (remove-svg)
   (main))
