@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+  <style>
+
+.land {
+  fill: #999;
+  stroke-opacity: 1;
+}
+
+.graticule {
+  fill: none;
+  stroke: black;
+  stroke-width:.5;
+  opacity:.2;
+}
+
+.labels {
+    font: 8px sans-serif;
+    fill: black;
+    opacity: .5;
+
+    display:none;
+}
+
+.noclicks { pointer-events:none; }
+
+.point {  opacity:.6; }
+
+.arcs {
+  opacity:.1;
+  stroke: gray;
+  stroke-width: 3;
+}
+.flyers {
+  stroke-width:1;
+  opacity: .6;
+  stroke: darkred;
+}
+.arc, .flyer {
+  stroke-linejoin: round;
+  fill:none;
+}
+  .arc { }
+  .flyer { }
+  .flyer:hover { }
+
+</style>
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="css/style.css" rel="stylesheet" type="text/css">
+    <link rel="icon" href="https://clojurescript.org/images/cljs-logo-icon-32.png">
+  </head>
+  <body>
+    <div id="app">
+      <h2>Figwheel template</h2>
+      <p>Checkout your developer console.</p>
+      <div id="graph">
+      </div>
+    </div>
+      <script src="js/compiled/world_topo.js" type="text/javascript"></script>
+      <script>world_topo.core.main()</script>
+  </body>
+</html>
