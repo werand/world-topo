@@ -13,6 +13,14 @@
 (defonce m0 (atom nil))
 (defonce o0 (atom [0 0 0]))
 
+(defn create-arcs [places]
+  (clj->js
+   (for [a places.features b places.features :when (not= a b)]
+     {:type "Feature"
+      :geometry {:type "LineString"
+                 :coordinates [(.. a -geometry -coordinates)
+                               (.. b -geometry -coordinates)]}})))
+
 (defn mousedown [proj]
   (reset! m0 [js/d3.event.pageX js/d3.event.pageY])
   (reset! o0 (.rotate proj))
@@ -28,6 +36,9 @@
       (.attr "d" path))
   (-> svg
       (.selectAll ".point")
+      (.attr "d" path))
+  (-> svg
+      (.selectAll ".arc")
       (.attr "d" path)))
 
 (defn mousemove [proj path svg]
@@ -163,15 +174,44 @@
       (.attr "r" (.scale proj))
       (.attr "class" "noclicks")
       (.style "fill" "url(#globe_shading)"))
+  (-> svg
+      (.append "g")
+      (.attr "class" "points")
+      (.selectAll "text")
+      (.data places.features)
+      (.enter)
+      (.append "path")
+      (.attr "class" "point")
+      (.attr "d" path))
+  (-> svg
+      (.append "g")
+      (.attr "class" "arcs")
+      (.selectAll "path")
+      (.data (create-arcs places))
+      (.enter)
+      (.append "path")
+      (.attr "class" "arc")
+      (.attr "d" path))
   (refresh svg path))
 
+
+
+;; only works when initialization ist done within the async block
+;; i currently don't know why. It wont't work when proj path and svg
+;; are stored in atoms as state ...
 (defn initialize [world places]
+  (println (create-arcs places))
   (let [_ (remove-svg)
         proj (-> js/d3
-              (.geoOrthographic)
-              (.translate #js [(/ width 2) (/ height 2)])
-              (.clipAngle 90)
-              (.scale 420))
+                 (.geoOrthographic)
+                 (.translate #js [(/ width 2) (/ height 2)])
+                 (.clipAngle 90)
+                 (.scale 420))
+        sky (-> js/d3
+                (.geoOrthographic)
+                (.translate #js [(/ width 2) (/ height 2)])
+                (.clipAngle 90)
+                (.scale 500))
         path (-> js/d3
                  (.geoPath)
                  (.projection proj)
@@ -189,4 +229,4 @@
 
 (defn on-js-reload []
   (println "on-js-reload called")
-  (main) )
+  (main))
