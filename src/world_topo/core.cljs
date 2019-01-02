@@ -10,22 +10,26 @@
 (defonce height 1000)
 (defonce width 960)
 
-(defonce proj (atom (-> js/d3
-                    (.geoOrthographic)
-                    (.translate #js [(/ width 2) (/ height 2)])
-                    (.clipAngle 90)
-                    (.scale 420))))
+(defonce initialized (atom nil))
 
-(defonce sky (-> js/d3
+(defonce proj (atom nil))
+
+#_(atom (-> js/d3
+            (.geoOrthographic)
+            (.translate #js [(/ width 2) (/ height 2)])
+            (.clipAngle 90)
+            (.scale 420)))
+
+#_(defonce sky (-> js/d3
              (.geoOrthographic)
              (.translate #js [(/ width 2) (/ height 2)])))
 
-(defonce path (atom (-> js/d3
-                    (.geoPath)
-                    (.projection @proj)
-                    (.pointRadius 2))))
-
-(defonce svg (atom 0))
+(def path (atom nil))
+#_(atom (-> js/d3
+          (.geoPath)
+          (.projection @proj)
+          (.pointRadius 2)))
+(def svg (atom nil))
 
 #_(def swoosh (-> js/d3
                 (.line)
@@ -34,32 +38,50 @@
                 (.interpolate "cardinal")
                 (.tension .0)))
 
-(def m0 (atom []))
-(def o0 (atom [0 0 0]))
+(defonce m0 (atom nil))
+(defonce o0 (atom [0 0 0]))
 
-(defn mousedown []
+(defn mousedown [proj]
   (reset! m0 [js/d3.event.pageX js/d3.event.pageY])
-  (reset! o0 (.rotate @proj))
-  #_(println @o0)
-  (-> js/d3.event
-      (.preventDefault)))
+  (reset! o0 (.rotate proj))
+  (println (str "mousedown" @o0))
+  (js/d3.event.preventDefault))
 
-(defn mouseup [])
+(defn mouseup []
+  (reset! m0 nil))
 
 (declare on-js-reload)
 
-(defn mousemove []
-  (let [m1 [js/d3.event.pageX js/d3.event.pageY]
-        o1 [(+ (first @o0)
-               (/ (- (first m1) (first @m0)) 6))
-            (+ (second @o0)
-               (/ (- (second @m0) (second m1)) 6))]]
-    #_(println m1)
-    (println o1)
-    (.rotate @proj o1)
-    (.rotate sky o1)
-    #_(reset! o0 o1)
-    (on-js-reload)))
+(defn mousemove [proj path svg]
+  (when-not (nil? @m0)
+    (println "mousemove "(str o0 m0))
+    (let [m1-x js/d3.event.pageX
+          m1-y js/d3.event.pageY
+          m0-x (first @m0)
+          m0-y (second @m0)
+          o0-x (first @o0)
+          o0-y (second @o0)
+          o1-x (+ o0-x
+                  (/ (- m1-x m0-x) 6))
+          o1-y (+ o0-y
+                  (/ (- m0-y m1-y) 6))
+          o1 [o1-x (if (> o1-y 30)
+                     30
+                     (if (< o1-y -30)
+                       -30
+                       o1-y))]]
+      #_(println m1)
+      (println o1)
+      (.rotate proj (clj->js o1))
+      #_(.rotate sky o1)
+      #_(reset! o0 o1)
+      #_(on-js-reload)))
+  (-> svg
+      (.selectAll ".land")
+      (.attr "d" path))
+  (-> svg
+      (.selectAll ".point")
+      (.attr "d" path)))
 
 (println "This text is printed from src/world-topo/core.cljs. Go ahead and edit it and see reloading in action.")
 
@@ -74,23 +96,27 @@
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
 )
 
-(defn append-svg []
-  (-> js/d3
-      (.select "#graph")
-      (.append "svg")
-      (.attr "height" height)
-      (.attr "width" width)
-      (.on "mousedown" mousedown)))
+(defn append-svg [proj]
+  (if (nil? @svg)
+    (do
+      (println "append-svg")
+      (-> js/d3
+         (.select "#graph")
+         (.append "svg")
+         (.attr "height" height)
+         (.attr "width" width)
+         (.on "mousedown" (partial mousedown proj))))
+    @svg))
 
 (defn remove-svg []
-  (-> js/d3
+  #_(-> js/d3
       (.selectAll "#graph svg")
       (.remove)))
 
-(defn render [svg world places]
+(defn render [world places]
   #_(println (js/topojson.feature world (.. world -objects -land)))
   #_(println (.-land (.-objects world)))
-  (let [ocean-fill (-> svg
+  (let [ocean-fill (-> @svg
                        (.append "defs")
                        (.append "radialGradient")
                        (.attr "id" "ocean_fill")
@@ -104,7 +130,7 @@
         (.append "stop")
         (.attr "offset" "100%")
         (.attr "stop-color" "#ababab")))
-  (let [globe-highlight (-> svg
+  (let [globe-highlight (-> @svg
                             (.append "defs")
                             (.append "radialGradient")
                             (.attr "id" "globe_highlight")
@@ -120,7 +146,7 @@
         (.attr "offset" "100%")
         (.attr "stop-color" "#ba9")
         (.attr "stop-opacity" "0.2")))
-  (let [globe-shading (-> svg
+  (let [globe-shading (-> @svg
                           (.append "defs")
                           (.append "radialGradient")
                           (.attr "id" "globe_shading")
@@ -136,7 +162,7 @@
         (.attr "offset" "100%")
         (.attr "stop-color" "#505962")
         (.attr "stop-opacity" "0.3")))
-  (let [drop-shadow (-> svg
+  (let [drop-shadow (-> @svg
                         (.append "defs")
                         (.append "radialGradient")
                         (.attr "id" "drop_shadow")
@@ -152,7 +178,7 @@
         (.attr "offset" "100%")
         (.attr "stop-color" "#000")
         (.attr "stop-opacity" "0")))
-  (-> svg
+  (-> @svg
       (.append "ellipse")
       (.attr "cx" 440)
       (.attr "cy" 450)
@@ -160,26 +186,26 @@
       (.attr "ry" (* .25 (.scale @proj)))
       (.attr "class" "noclicks")
       (.style "fill" "url(#drop_shadow)"))
-  (-> svg
+  (-> @svg
       (.append "circle")
       (.attr "cx" (/ width 2))
       (.attr "cy" (/ height 2))
       (.attr "r" (.scale @proj))
       (.attr "class" "noclicks")
       (.style "fill" "url(#ocean_fill)"))
-  (-> svg
+  (-> @svg
       (.append "path")
       (.datum (js/topojson.feature world (.. world -objects -land)))
       (.attr "class" "land noclicks")
       (.attr "d" @path))
-  (-> svg
+  (-> @svg
       (.append "circle")
       (.attr "cx" (/ width 2))
       (.attr "cy" (/ height 2))
       (.attr "r" (.scale @proj))
       (.attr "class" "noclicks")
       (.style "fill" "url(#globe_highlight)"))
-  (-> svg
+  (-> @svg
       (.append "circle")
       (.attr "cx" (/ width 2))
       (.attr "cy" (/ height 2))
@@ -187,32 +213,40 @@
       (.attr "class" "noclicks")
       (.style "fill" "url(#globe_shading)"))
 ;; Refresh
-  (-> svg
+  (-> @svg
       (.selectAll ".land")
       (.attr "d" @path))
-  (-> svg
+  (-> @svg
       (.selectAll ".point")
       (.attr "d" @path))
   )
 
+(defn inner-main [world places]
+  (let [p (-> js/d3
+              (.geoOrthographic)
+              (.translate #js [(/ width 2) (/ height 2)])
+              (.clipAngle 90)
+              (.scale 420))
+        lsvg (append-svg p)]
+    (reset! svg lsvg)
+    (reset! proj p)
+    (println (str "ROTATE ON PROJ " (.rotate p)))
+    (reset! path (-> js/d3
+                     (.geoPath)
+                     (.projection @proj)
+                     (.pointRadius 2)))
+    (println (str "ROTATE ON PROJ2 " (.rotate @proj)))
+    (render world places)
+    (-> js/d3
+        (.select js/window)
+        (.on "mouseup" mouseup)
+        (.on "mousemove" (partial mousemove p @path @svg)))))
+
 (defn ^:export main []
-  (-> js/d3
-      (.select js/window)
-      (.on "mouseup" mouseup)
-      (.on "mousemove" mousemove))
-  (reset! proj (-> js/d3
-                   (.geoOrthographic)
-                   (.translate #js [(/ width 2) (/ height 2)])
-                   (.clipAngle 90)
-                   (.scale 420)))
-  #_(reset! path (-> js/d3
-                   (.geoPath)
-                   (.projection @proj)
-                   (.pointRadius 2)))
-  (let [lsvg (append-svg)]
+  (when (nil? @initialized)
     (.then (js/Promise.all #js [world-promise places-promise])
-           #_(reset! svg lsvg)
-           #(render lsvg (first %) (second %)))))
+           (fn [[world places]] (inner-main world places)))
+    (reset! initialized true)))
 
 (defn on-js-reload []
   (println "on-js-reload called")
