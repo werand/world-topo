@@ -4,6 +4,12 @@
 
 (enable-console-print!)
 
+;; Inspired from
+;; Usage of d3 with clojurescript
+;; https://lambdaisland.com/blog/26-04-2018-d3-clojurescript
+;; d3 - Example - this is the original code i transfered to clojurescript
+;; http://bl.ocks.org/dwtkns/4973620
+
 (defonce world-promise (js/d3.json "world.json"))
 (defonce places-promise (js/d3.json "places.json"))
 
@@ -47,6 +53,7 @@
       (.curve (js/d3.curveBundle.beta 0.6))))
 
 ;; https://github.com/d3/d3-geo/blob/master/README.md#geoDistance
+;; https://stackoverflow.com/questions/35953892/d3-scale-linear-vs-d3-scalelinear
 (defn fade-at-edge [proj d]
   (let [center-pos (.invert proj #js [(/ width 2) (/ height 2)])
         start (if (nil? (.-source d))
@@ -68,7 +75,6 @@
 (defn mousedown [proj]
   (reset! m0 [js/d3.event.pageX js/d3.event.pageY])
   (reset! o0 (.rotate proj))
-  #_(println (str "mousedown" @o0))
   (js/d3.event.preventDefault))
 
 (defn mouseup [proj]
@@ -93,7 +99,6 @@
 
 (defn mousemove [proj sky path svg]
   (when-not (nil? @m0)
-    #_(println "mousemove "(str o0 m0))
     (let [m1-x js/d3.event.pageX
           m1-y js/d3.event.pageY
           m0-x (first @m0)
@@ -112,7 +117,6 @@
   (refresh proj sky svg path))
 
 (defn append-svg [proj]
-  (println "append-svg")
   (-> js/d3
       (.select "#graph")
       (.append "svg")
@@ -126,8 +130,6 @@
        (.remove)))
 
 (defn render [proj sky path svg world places]
-  #_(println (js/topojson.feature world (.. world -objects -land)))
-  #_(println (.-land (.-objects world)))
   (let [ocean-fill (-> svg
                        (.append "defs")
                        (.append "radialGradient")
@@ -286,5 +288,4 @@
          (fn [[world places]] (initialize world places))))
 
 (defn on-js-reload []
-  (println "on-js-reload called")
   (main))
