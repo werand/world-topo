@@ -4,17 +4,17 @@
 
 (enable-console-print!)
 
-;; Inspired from
-;; Usage of d3 with clojurescript
+;; Usage of D3 with clojurescript, inspired from:
 ;; https://lambdaisland.com/blog/26-04-2018-d3-clojurescript
-;; d3 - Example - this is the original code i transfered to clojurescript
-;; http://bl.ocks.org/dwtkns/4973620
+;; and this d3 - Example - this is the original code i transferred to
+;; clojurescript: http://bl.ocks.org/dwtkns/4973620
 
 (defonce world-promise (js/d3.json "world.json"))
 (defonce places-promise (js/d3.json "places.json"))
 
-(defonce height 1000)
-(defonce width 960)
+(def width 500)
+(def height (* width 1.1))
+(def scale (* width 0.42))
 
 (defonce m0 (atom nil))
 (defonce o0 (atom #js [0 0 0]))
@@ -201,8 +201,8 @@
         (.attr "stop-opacity" "0")))
   (-> svg
       (.append "ellipse")
-      (.attr "cx" 440)
-      (.attr "cy" 450)
+      (.attr "cx" (* (/ width 2) 0.9))
+      (.attr "cy" (* height 0.85))
       (.attr "rx" (* .9 (.scale proj)))
       (.attr "ry" (* .25 (.scale proj)))
       (.attr "class" "noclicks")
@@ -271,13 +271,13 @@
                  (.geoOrthographic)
                  (.translate #js [(/ width 2) (/ height 2)])
                  (.clipAngle 90)
-                 (.scale 420)
+                 (.scale scale)
                  (.rotate @o0))
         sky (-> js/d3
                 (.geoOrthographic)
                 (.translate #js [(/ width 2) (/ height 2)])
                 (.clipAngle 90)
-                (.scale 700)
+                (.scale (* scale 1.4))
                 (.rotate @o0))
         path (-> js/d3
                  (.geoPath)
