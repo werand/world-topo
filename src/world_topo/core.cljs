@@ -60,7 +60,7 @@
       (.line)
       (.x #(first %))
       (.y #(second %))
-      (.curve (js/d3.curveBundle.beta 0.6))))
+      (.curve (js/d3.curveBundle.beta 0.5))))
 
 ;; https://github.com/d3/d3-geo/blob/master/README.md#geoDistance
 ;; https://stackoverflow.com/questions/35953892/d3-scale-linear-vs-d3-scalelinear
@@ -92,7 +92,7 @@
   (reset! o0 (.rotate proj))
   (reset! m0 nil))
 
-(defn refresh [proj sky svg path]
+(defn refresh [proj sky path svg]
   (-> svg
       (.selectAll ".land")
       (.attr "d" path))
@@ -110,22 +110,18 @@
 
 (defn mousemove [proj sky path svg]
   (when-not (nil? @m0)
-    (let [m1-x js/d3.event.pageX
-          m1-y js/d3.event.pageY
-          m0-x (first @m0)
-          m0-y (second @m0)
-          o0-x (first @o0)
-          o0-y (second @o0)
+    (let [[m1-x m1-y] [js/d3.event.pageX js/d3.event.pageY]
+          [m0-x m0-y] @m0
+          [o0-x o0-y] @o0
           o1-x (+ o0-x (/ (- m1-x m0-x) 6))
           o1-y (+ o0-y (/ (- m0-y m1-y) 6))
-          o1 #js [o1-x
-                  (cond
-                    (> o1-y 30)   30
-                    (< o1-y -30) -30
-                    :else o1-y)]]
+          o1 #js [o1-x (cond
+                         (> o1-y 30)   30
+                         (< o1-y -30) -30
+                         :else o1-y)]]
       (.rotate proj o1)
       (.rotate sky o1)))
-  (refresh proj sky svg path))
+  (refresh proj sky path svg))
 
 (defn append-svg [proj]
   (-> js/d3
@@ -264,7 +260,7 @@
       (.append "path")
       (.attr "class" "flyer")
       (.attr "d" #((interpolate) (flying-arc proj sky %))))
-  (refresh proj sky svg path))
+  (refresh proj sky path svg))
 
 ;; only works when initialization is done within the async block
 ;; i currently don't know why. It wont't work when proj path and svg
