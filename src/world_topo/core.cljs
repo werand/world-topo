@@ -19,19 +19,29 @@
 (defonce m0 (atom nil))
 (defonce o0 (atom #js [0 0 0]))
 
+(defn link-places [places]
+  (let [p (js->clj places.features)]
+    (loop [acc [] a p a1 (first a) o (rest p)]
+      (if (seq a)
+        (recur
+         (conj acc
+               (for [b o]
+                 [(get (get a1 "geometry") "coordinates")
+                  (get (get b "geometry") "coordinates")]))
+         (rest a)
+         (first (rest a))
+         (rest o))
+        (apply concat acc)))))
+
 (defn create-arcs [places]
   (clj->js
-   (for [a places.features b places.features :when (not= a b)]
-     {:type "Feature"
-      :geometry {:type "LineString"
-                 :coordinates [(.. a -geometry -coordinates)
-                               (.. b -geometry -coordinates)]}})))
+   (for [coords (link-places places)]
+     {:type "Feature" :geometry {:type "LineString" :coordinates coords}})))
 
 (defn create-links [places]
   (clj->js
-   (for [a places.features b places.features :when (not= a b)]
-     {:source (.. a -geometry -coordinates)
-      :target (.. b -geometry -coordinates)})))
+   (for [[a b] (link-places places)]
+     {:source a :target b})))
 
 (defn location-along-arc [start end loc]
   ((js/d3.geoInterpolate start end) loc))
@@ -40,9 +50,9 @@
   (let [source pts.source
         target pts.target
         mid (location-along-arc source target .5)]
-    (clj->js [(proj source)
-              (sky mid)
-              (proj target)])))
+    #js [(proj source)
+         (sky mid)
+         (proj target)]))
 
 ;; see https://github.com/d3/d3-shape#curveCardinal_tension
 (defn interpolate []
@@ -56,20 +66,21 @@
 ;; https://stackoverflow.com/questions/35953892/d3-scale-linear-vs-d3-scalelinear
 (defn fade-at-edge [proj d]
   (let [center-pos (.invert proj #js [(/ width 2) (/ height 2)])
-        start (if (nil? (.-source d))
-                (first (.. d -geometry --coordinates))
-                (.-source d))
-        start (clj->js (clojure.string.split start #","))
-        end (if (nil? (.-source d))
-              (second (.. d -geometry --coordinates))
-              (.-target d))
-        end (clj->js (clojure.string.split end #","))
+        d (js->clj d)
+        start (clj->js
+               (if (nil? (get d "source"))
+                 (first (get (get d "geometry") "coordinates"))
+                 (get d "source")))
+        end (clj->js
+             (if (nil? (get d "source"))
+               (second (get (get d "geometry") "coordinates"))
+               (get d "target")))
         start-dist (- 1.57 (js/d3.geoDistance start center-pos))
         end-dist (- 1.57 (js/d3.geoDistance end center-pos))
+        dist (if (< start-dist end-dist) start-dist end-dist)
         fade (-> (js/d3.scaleLinear)
                  (.domain #js [-0.1 0])
-                 (.range #js [0 0.1]))
-        dist (if (< start-dist end-dist) start-dist end-dist)]
+                 (.range #js [-1 0.1]))]
     (fade dist)))
 
 (defn mousedown [proj]
@@ -270,7 +281,7 @@
                 (.geoOrthographic)
                 (.translate #js [(/ width 2) (/ height 2)])
                 (.clipAngle 90)
-                (.scale 600)
+                (.scale 700)
                 (.rotate @o0))
         path (-> js/d3
                  (.geoPath)
