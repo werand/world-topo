@@ -11,7 +11,7 @@
 (defonce width 960)
 
 (defonce m0 (atom nil))
-(defonce o0 (atom [0 0 0]))
+(defonce o0 (atom #js [0 0 0]))
 
 (defn create-arcs [places]
   (clj->js
@@ -71,7 +71,8 @@
   #_(println (str "mousedown" @o0))
   (js/d3.event.preventDefault))
 
-(defn mouseup []
+(defn mouseup [proj]
+  (reset! o0 (.rotate proj))
   (reset! m0 nil))
 
 (defn refresh [proj sky svg path]
@@ -101,11 +102,11 @@
           o0-y (second @o0)
           o1-x (+ o0-x (/ (- m1-x m0-x) 6))
           o1-y (+ o0-y (/ (- m0-y m1-y) 6))
-          o1 (clj->js [o1-x
-                       (cond
-                         (> o1-y 30)   30
-                         (< o1-y -30) -30
-                         :else o1-y)])]
+          o1 #js [o1-x
+                  (cond
+                    (> o1-y 30)   30
+                    (< o1-y -30) -30
+                    :else o1-y)]]
       (.rotate proj o1)
       (.rotate sky o1)))
   (refresh proj sky svg path))
@@ -261,12 +262,14 @@
                  (.geoOrthographic)
                  (.translate #js [(/ width 2) (/ height 2)])
                  (.clipAngle 90)
-                 (.scale 420))
+                 (.scale 420)
+                 (.rotate @o0))
         sky (-> js/d3
                 (.geoOrthographic)
                 (.translate #js [(/ width 2) (/ height 2)])
                 (.clipAngle 90)
-                (.scale 600))
+                (.scale 600)
+                (.rotate @o0))
         path (-> js/d3
                  (.geoPath)
                  (.projection proj)
@@ -275,7 +278,7 @@
     (render proj sky path svg world places)
     (-> js/d3
         (.select js/window)
-        (.on "mouseup" mouseup)
+        (.on "mouseup" (partial mouseup proj))
         (.on "mousemove" (partial mousemove proj sky path svg)))))
 
 (defn ^:export main []
