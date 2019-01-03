@@ -1,15 +1,21 @@
 # world-topo
 
-FIXME: Write a one-line description of your library/project.
+Usage example of d3 with clojurescript
 
 ## Overview
 
-FIXME: Write a paragraph about the library/project and highlight its goals.
+Usage of d3 with clojurescript, inspired from:
+https://lambdaisland.com/blog/26-04-2018-d3-clojurescript
+and this d3 Example http://bl.ocks.org/dwtkns/4973620 (i transferred
+this code to clojurescript).
+
+This project was mainly an exercise with clojurescript for me. All the credit goes to
+the respective authors.
 
 ## Setup
 
 To get an interactive development environment run:
-
+   
     lein figwheel
 
 and open your browser at [localhost:3449](http://localhost:3449/).
@@ -34,6 +40,6 @@ get live reloading, nor a REPL.
 
 ## License
 
-Copyright © 2014 FIXME
+Copyright © 2019 Andreas Werner
 
 Distributed under the Eclipse Public License either version 1.0 or (at your option) any later version.
